@@ -35,4 +35,8 @@ setup(name=PACKAGE,
       author_email=EMAIL,
       license=LICENSE,
       url=WEBSITE,
-      py_modules=MODULES)
+      py_modules=MODULES,
+      install_requires=[
+        'timelength==3.0.2',
+        'dateparser==1.2.2'
+        ])

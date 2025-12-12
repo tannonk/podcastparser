@@ -598,6 +598,9 @@ def parse_time(value):
     hours = minutes = seconds = fraction = 0
     parsed = False
 
+    # strip parentheses to handle cases like "(01:20:05)"
+    value = re.sub(r'[\(\)]', '', value)
+
     m = re.match(r'(\d+)[:](\d\d?)[:](\d\d?)([.]\d+)?$', value)
     if not parsed and m:
         hours, minutes, seconds, fraction = m.groups()
@@ -618,10 +621,18 @@ def parse_time(value):
 
     if not parsed:
         try:
-            seconds = int(value)
-        except ValueError:
-            logger.warning('Could not parse time value: "%s"', value)
-            return 0
+            from timelength import TimeLength
+            tl = TimeLength(value)
+            if tl.result.success:
+                return int(tl.result.seconds)
+        except Exception as e:
+            # logger.warning('Failed to parse time value with TimeLength: "%s", error: %s', value, e)
+            # if all else fails, brute force it in most basic way possible.
+            try:
+                seconds = int(value)
+            except ValueError:
+                logger.warning('Could not parse time value: "%s"', value)
+                return 0
 
     return (int(hours) * 60 + int(minutes)) * 60 + int(seconds)
 
@@ -701,7 +712,7 @@ def parse_pubdate(text):
     """
     if not text:
         return 0
-
+    
     parsed = parsedate_tz(text)
     if parsed is not None:
         try:
@@ -727,10 +738,18 @@ def parse_pubdate(text):
                 return int(mktime_tz(tuple(parsed)))
             else:
                 return int(time.mktime(parsed))
-    except Exception:
-        pass
-
-    logger.error('Cannot parse date: %s', repr(text))
+    except Exception as e:
+        # logger.warning('Failed to manually parse %s: %s', repr(text), str(e))
+        
+        try:
+            import dateparser
+            parsed = dateparser.parse(text)
+            if parsed is not None:
+                return int(parsed.timestamp())
+                
+        except Exception as e:
+            logger.error('Failed to parse %s: %s', repr(text), str(e))
+            pass
     return 0
 
 
